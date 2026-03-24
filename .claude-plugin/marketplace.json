@@ -1,0 +1,14 @@
+{
+  "name": "psylch-ch-project-context",
+  "owner": {
+    "name": "psylch"
+  },
+  "plugins": [
+    {
+      "name": "ch-project-context",
+      "description": "Initialize a project-level context management system with docs/ directory structure, Claude Code hooks (session-start, quality-gate), and CLAUDE.md navigation. Use when starting a new project, bootstrapping context management, or when the user says '/ch-project-context init', 'init project context', 'setup context management', 'initialize docs structure'.",
+      "version": "1.0.0",
+      "source": "./"
+    }
+  ]
+}

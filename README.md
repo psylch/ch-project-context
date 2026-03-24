@@ -1,5 +1,7 @@
 # ch-project-context
 
+[中文文档](README.zh.md)
+
 A [skills.sh](https://skills.sh/) skill for Claude Code that bootstraps a project-level context management system in one command.
 
 ## What It Does
@@ -14,19 +16,28 @@ Running `/ch-project-context init` in a Claude Code session will:
 4. Append a documentation navigation block to `CLAUDE.md`
 5. Optionally create a `docs/architecture.md` skeleton
 
-All generated docs use YAML frontmatter so the hooks can parse them programmatically. See `references/conventions.md` for the full frontmatter spec, naming conventions, and document templates.
+All generated docs use YAML frontmatter so the hooks can parse them programmatically.
 
 ## Install
 
-```bash
-# From this repo (local path)
-npx skills add /path/to/this/repo -g
+### Via skills.sh (recommended)
 
-# Or from GitHub (once published)
-npx skills add <owner>/ch-project-context -g
+```bash
+npx skills add psylch/ch-project-context -g -y
 ```
 
-The `-g` flag installs globally so the skill is available in all projects.
+### Manual Install
+
+```bash
+git clone https://github.com/psylch/ch-project-context.git ~/.claude/skills/ch-project-context
+```
+
+Restart your agent after installation.
+
+## Prerequisites
+
+- Any AI coding agent that supports [skills.sh](https://skills.sh/) (Claude Code, Cursor, Windsurf, etc.)
+- **Python 3.6+** (for skill scripts, zero external dependencies)
 
 ## Usage
 
@@ -49,11 +60,19 @@ After init, you can customize:
 
 ```
 ch-project-context/
-├── SKILL.md              # Skill definition and instructions
-├── scripts/
-│   └── init.py           # Init script (creates dirs, hooks, settings)
-└── references/
-    └── conventions.md    # Frontmatter spec, naming, and doc templates
+├── skills/
+│   └── ch-project-context/
+│       ├── SKILL.md              # Skill definition and instructions
+│       ├── scripts/
+│       │   └── init.py           # Init script (creates dirs, hooks, settings)
+│       └── references/
+│           └── conventions.md    # Frontmatter spec, naming, and doc templates
+├── .claude-plugin/
+│   ├── plugin.json
+│   └── marketplace.json
+├── README.md
+├── README.zh.md
+└── LICENSE
 ```
 
 ## License
