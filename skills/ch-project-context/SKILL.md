@@ -19,6 +19,33 @@ Creates a structured `docs/` directory, installs Claude Code hooks for automatic
 
 ## Instructions
 
+### Step 0: Assess Project Type
+
+Before doing anything, determine whether this project actually needs the full context management system. Ask these three questions:
+
+| Signal | Yes → Full mechanism | No → Lightweight |
+|--------|---------------------|-------------------|
+| **Multi-agent handoff** — Will multiple agents or people take turns working on this? | Exec-plans track phases and handoff notes | No handoff = no state to pass |
+| **Cross-session state continuity** — Does work span many sessions where context could drift? | Session-start hook auto-injects "where we left off" | Single-session work = no drift risk |
+| **Work item lifecycle > few days** — Do individual tasks live long enough to accumulate decisions and issues? | Decisions/known-issues directories earn their keep | Short tasks = overhead > value |
+
+**If all three are "No"**: This is an **atomic work collection** (e.g., a workspace of independent small projects, a skill collection, a monorepo of micro-tools). The full mechanism is over-engineering. Instead, recommend:
+
+```
+[ch-project-context] This project doesn't need the full context system.
+
+For atomic work collections, these are sufficient:
+  1. A well-written CLAUDE.md with project structure and workflow conventions
+  2. Batch operation SOPs (review/fix/verify flows) documented in CLAUDE.md
+  3. Claude Code's memory system for cross-session context
+
+No docs/ directory, no hooks, no frontmatter needed.
+```
+
+Then **stop** — do not proceed to Step 1.
+
+**If one or more are "Yes"**: Proceed with the full init below.
+
 ### Step 1: Detect Project Root
 
 Resolve the project root directory. Use the current working directory. Verify it looks like a project root (has `.git/`, `package.json`, `Cargo.toml`, `pyproject.toml`, or similar). If unsure, confirm with the user.
