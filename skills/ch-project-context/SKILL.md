@@ -137,6 +137,12 @@ Next Steps:
   2. Create your first exec-plan: docs/exec-plans/active/<feature>/plan.md
   3. Optionally create docs/workflow.md for team workflow rules
   4. The session-start hook will auto-inject context on every new session
+
+If this is an existing project with code but no documentation:
+  → Analyze the codebase and populate docs/ automatically.
+    Read the code, infer architecture, key decisions, and known issues,
+    then write docs/architecture.md, docs/decisions/, and docs/known-issues/
+    following the templates in references/conventions.md.
 ```
 
 ## Customization Notes
