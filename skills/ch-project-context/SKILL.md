@@ -50,14 +50,22 @@ Then **stop** — do not proceed to Step 1.
 
 Resolve the project root directory. Use the current working directory. Verify it looks like a project root (has `.git/`, `package.json`, `Cargo.toml`, `pyproject.toml`, or similar). If unsure, confirm with the user.
 
-### Step 2: Check Existing State
+### Step 2: Ask Language Preference
+
+Ask the user what language the documentation content should be written in. This affects doc body text only (decisions, issues, plans, research). Frontmatter keys, directory names, and code stay in English.
+
+Examples: "English", "中文", "日本語", "한국어", etc. Default to English if the user doesn't care.
+
+Store the answer for Step 4 (template substitution).
+
+### Step 3: Check Existing State
 
 Before running init, check what already exists:
 - If `docs/` exists with content, warn the user and ask whether to merge (skip existing dirs) or abort
 - If `.claude/hooks/` already has hook files, warn and ask whether to overwrite or skip
 - If `.claude/settings.json` exists, merge hook entries rather than overwriting
 
-### Step 3: Run Init Script
+### Step 4: Run Init Script
 
 Run the init script to create the directory structure and hook files:
 
@@ -78,7 +86,7 @@ The script outputs JSON:
 }
 ```
 
-### Step 4: Update CLAUDE.md
+### Step 5: Update CLAUDE.md
 
 After the script succeeds, update CLAUDE.md:
 
@@ -86,9 +94,9 @@ After the script succeeds, update CLAUDE.md:
 
 **If CLAUDE.md does not exist**: Create a minimal CLAUDE.md with project name (inferred from directory name or package.json) and the docs navigation block.
 
-The navigation block is in `{SKILL_DIR}/templates/claude-md-block.md`. Read it and append to CLAUDE.md as-is.
+Read `{SKILL_DIR}/templates/claude-md-block.md`, replace `{lang}` with the user's language choice from Step 2, then append to CLAUDE.md.
 
-### Step 5: Report
+### Step 6: Report
 
 Present a summary:
 

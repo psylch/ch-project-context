@@ -56,4 +56,8 @@ date: YYYY-MM-DD
 ```
 
 Naming: decisions use `D001-short-name.md`, issues use `I001-short-name.md`, research uses descriptive names, exec-plans use `docs/exec-plans/active/<feature>/plan.md`.
+
+### Language
+
+**Document content language: {lang}**. Write all doc body text (descriptions, decisions, handoff notes, issue reports) in this language. Frontmatter keys, directory names, file naming patterns, and hook code stay in English.
 <!-- ch-project-context:end -->
