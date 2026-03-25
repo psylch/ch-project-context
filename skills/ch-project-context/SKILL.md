@@ -96,7 +96,52 @@ After the script succeeds, update CLAUDE.md:
 
 Read `{SKILL_DIR}/templates/claude-md-block.md`, replace `{lang}` with the user's language choice from Step 2, then append to CLAUDE.md.
 
-### Step 6: Report
+### Step 6: Audit Existing Content
+
+Scan the project for content that should be restructured into the docs/ system. Report findings to the user as a checklist — do not auto-fix, let the user decide.
+
+**Check 1: Memory state leakage** — Read MEMORY.md (if exists). Flag any entries that track progress, plans, issues, or decisions — these belong in `docs/`, not memory. Memory should only have pointers and personal preferences.
+
+**Check 2: Scattered documentation** — Glob for `.md` files outside `docs/` (excluding README.md, CLAUDE.md, CHANGELOG.md, CONTRIBUTING.md, LICENSE). Flag files that look like decision records, known issues, architecture docs, or exec plans.
+
+**Check 3: README inline knowledge** — Read README.md. Flag sections like "Known Issues", "Architecture", "Decisions", "Roadmap" that contain substantive content — this should be extracted to the corresponding `docs/` directory.
+
+**Check 4: Missing frontmatter** — Check any pre-existing files in `docs/`. Flag files that lack the required YAML frontmatter (title, description, status, date).
+
+**Check 5: Operational knowledge as docs** — Look for step-by-step guides, runbooks, or how-to documents in `docs/` or elsewhere. These are better implemented as skills (triggerable, executable, with runtime context). Suggest using a skill creator (e.g. `better-skill-creator`) to convert them.
+
+**Check 6: CLAUDE.md completeness** — Verify CLAUDE.md has appropriate pointers: does it reference `docs/` (the block we just added)? Does it mention installed skills? If the project has skills that aren't referenced in CLAUDE.md, flag them — agents won't know they exist.
+
+Present findings as:
+
+```
+[ch-project-context] Audit Results
+
+✅ No issues (or)
+⚠️ Found items to address:
+
+  Memory:
+    - MEMORY.md has 3 progress-tracking entries → migrate to docs/exec-plans/
+
+  Scattered docs:
+    - ./ARCHITECTURE.md → move to docs/architecture.md
+
+  README sections:
+    - README.md "Known Issues" section → extract to docs/known-issues/
+
+  Missing frontmatter:
+    - docs/decisions/auth-choice.md → add YAML frontmatter
+
+  Docs → Skills:
+    - docs/local-dev-setup.md → convert to skill with better-skill-creator
+
+  CLAUDE.md pointers:
+    - 2 installed skills not referenced in CLAUDE.md
+```
+
+If all checks pass, skip the audit output and proceed to Step 7.
+
+### Step 7: Report
 
 Present a summary:
 
