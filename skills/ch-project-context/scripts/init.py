@@ -140,10 +140,16 @@ def get_workflow():
 
 
 def build_context():
-    """Assemble the session context."""
+    """Assemble the session context. Returns empty string if no active data."""
+    plans = get_active_plans()
+    issues = get_active_issues()
+    workflow = get_workflow()
+
+    if not plans and not issues and not workflow:
+        return ''
+
     parts = ['<session-context>']
 
-    plans = get_active_plans()
     if plans:
         parts.append('\n## Active Exec Plans\n')
         for p in plans:
@@ -154,7 +160,6 @@ def build_context():
                 parts.append(f"  Last handoff: {p['handoff'][:200]}...")
             parts.append('')
 
-    issues = get_active_issues()
     if issues:
         parts.append('\n## Active Known Issues\n')
         for i in issues:
@@ -163,7 +168,6 @@ def build_context():
                 parts.append(f"  {i['description']}")
             parts.append('')
 
-    workflow = get_workflow()
     if workflow:
         parts.append('\n## Workflow Rules\n')
         parts.append(workflow)
@@ -186,111 +190,6 @@ if __name__ == '__main__':
 '''
 
 
-# ── Hook: quality-gate.py ──────────────────────────────────────────
-
-QUALITY_GATE_HOOK = r'''#!/usr/bin/env python3
-"""
-Quality-gate hook (SubagentStop): blocks subagent from stopping
-until verification passes.
-
-Checks:
-1. Build verification (configurable command)
-2. Agent output contains test/verification evidence
-
-If checks fail, returns a message asking the agent to fix issues.
-"""
-
-import json
-import os
-import subprocess
-import sys
-
-PROJECT_ROOT = os.path.join(os.path.dirname(__file__), '..', '..')
-
-# ── Configure your build check command here ──
-# Examples:
-#   ['npx', 'tsc', '--noEmit']       # TypeScript
-#   ['cargo', 'check']                # Rust
-#   ['go', 'build', './...']          # Go
-#   ['ruff', 'check', '.']            # Python
-BUILD_CMD = ['npx', 'tsc', '--noEmit']
-BUILD_TIMEOUT = 60
-
-
-def run_build_check():
-    """Run the build check command and return (success, output)."""
-    try:
-        result = subprocess.run(
-            BUILD_CMD,
-            cwd=PROJECT_ROOT,
-            capture_output=True,
-            text=True,
-            timeout=BUILD_TIMEOUT,
-            encoding='utf-8',
-            errors='replace',
-        )
-        return result.returncode == 0, result.stdout + result.stderr
-    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-        return False, str(e)
-
-
-def check_agent_output(agent_output):
-    """Check if agent output contains verification evidence."""
-    if not agent_output:
-        return False, "No agent output to check"
-
-    evidence_patterns = [
-        'tsc', 'typecheck', 'compile', 'test', 'verify',
-        'npm run', 'npx', 'cargo', 'go build', 'ruff',
-        'PASS', 'FAIL', 'error', 'warning',
-    ]
-    lower_output = agent_output.lower()
-    found = [p for p in evidence_patterns if p.lower() in lower_output]
-    if found:
-        return True, f"Found verification evidence: {', '.join(found)}"
-    return False, "No verification evidence found in agent output"
-
-
-def main():
-    try:
-        hook_input = json.loads(sys.stdin.read())
-    except (json.JSONDecodeError, EOFError):
-        hook_input = {}
-
-    agent_output = hook_input.get('agentOutput', '')
-    failures = []
-
-    # Check 1: Build verification
-    build_ok, build_output = run_build_check()
-    if not build_ok:
-        error_summary = build_output[:500] if build_output else "Unknown error"
-        failures.append(f"Build check failed:\n{error_summary}")
-
-    # Check 2: Agent provided verification evidence
-    evidence_ok, evidence_msg = check_agent_output(agent_output)
-    if not evidence_ok:
-        failures.append(f"Verification: {evidence_msg}")
-
-    if failures:
-        message = "Quality gate failed. Please fix before completing:\n\n"
-        message += "\n\n".join(f"- {f}" for f in failures)
-        result = {
-            "decision": "block",
-            "reason": message,
-        }
-    else:
-        result = {
-            "decision": "allow",
-        }
-
-    print(json.dumps(result))
-
-
-if __name__ == '__main__':
-    main()
-'''
-
-
 # ── Settings.json template ─────────────────────────────────────────
 
 SETTINGS_HOOKS = {
@@ -303,18 +202,6 @@ SETTINGS_HOOKS = {
                         "type": "command",
                         "command": "python3 .claude/hooks/session-start.py",
                         "timeout": 10000,
-                    }
-                ],
-            }
-        ],
-        "SubagentStop": [
-            {
-                "matcher": "",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "python3 .claude/hooks/quality-gate.py",
-                        "timeout": 120000,
                     }
                 ],
             }
@@ -372,12 +259,6 @@ def install_hooks(root):
         f.write(SESSION_START_HOOK.lstrip('\n'))
     os.chmod(session_path, 0o755)
     installed.append('session-start.py')
-
-    gate_path = os.path.join(hooks_dir, 'quality-gate.py')
-    with open(gate_path, 'w', encoding='utf-8') as f:
-        f.write(QUALITY_GATE_HOOK.lstrip('\n'))
-    os.chmod(gate_path, 0o755)
-    installed.append('quality-gate.py')
 
     return installed
 

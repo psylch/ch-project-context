@@ -1,6 +1,6 @@
 ---
 name: ch-project-context
-description: "Initialize a project-level context management system with docs/ directory structure, Claude Code hooks (session-start, quality-gate), and CLAUDE.md navigation. Use when starting a new project, bootstrapping context management, or when the user says '/ch-project-context init', 'init project context', 'setup context management', 'initialize docs structure'."
+description: "Initialize a project-level context management system with docs/ directory structure, Claude Code session-start hook for automatic context injection, and CLAUDE.md navigation. Use when starting a new project, bootstrapping context management, or when the user says '/ch-project-context init', 'init project context', 'setup context management', 'initialize docs structure'."
 ---
 
 # ch-project-context
@@ -9,7 +9,7 @@ One-command initialization of a project-level context management system for Clau
 
 ## What It Does
 
-Creates a structured `docs/` directory, installs Claude Code hooks for automatic context injection and quality gating, and wires everything into `.claude/settings.json` and `CLAUDE.md`.
+Creates a structured `docs/` directory, installs a Claude Code session-start hook for automatic context injection, and wires everything into `.claude/settings.json` and `CLAUDE.md`.
 
 ## When to Use
 
@@ -73,7 +73,7 @@ The script outputs JSON:
   "status": "ok",
   "created": ["docs/exec-plans/active/", "docs/decisions/", ...],
   "skipped": ["docs/research/"],
-  "hooks_installed": ["session-start.py", "quality-gate.py"],
+  "hooks_installed": ["session-start.py"],
   "settings_updated": true
 }
 ```
@@ -104,8 +104,7 @@ The navigation block to append (between markers):
 
 ### Context Automation
 
-- **Session-start hook**: Auto-injects active plans, known issues, and workflow rules at session start
-- **Quality-gate hook**: Blocks subagent completion until TypeScript compiles and verification evidence exists
+- **Session-start hook**: Auto-injects active plans, known issues, and workflow rules at session start (no output when all sources are empty)
 - **Frontmatter convention**: Every doc file uses YAML frontmatter (title, description, status, related) for hook parsing
 
 ### Document Lifecycle
@@ -113,6 +112,21 @@ The navigation block to append (between markers):
 - New plans go in `exec-plans/active/`, move to `completed/` when done
 - New issues go in `known-issues/`, move to `resolved/` when fixed
 - Decisions and research are permanent (one file per topic, 30-100 lines)
+
+### Why docs/, Not Memory
+
+This project uses a structured `docs/` system instead of Claude Code's memory for project state. Do not duplicate docs content into memory or maintain parallel tracking.
+
+| Concern | docs/ system | Memory |
+|---------|-------------|--------|
+| Structure | Frontmatter + templates, typed directories | Flat key-value, no schema |
+| Lifecycle | `active/` → `completed/`, `active` → `resolved/` | None — manual cleanup |
+| Cross-agent handoff | exec-plan phases + handoff notes | Cannot express "agent A finished phase 1, agent B starts phase 2" |
+| Discoverability | Directory structure + session-start hook auto-injection | MEMORY.md index, 200-line truncation |
+
+**Memory as companion**: Memory is useful as a **hot cache and pointer layer** for docs — e.g., "current highest-priority plan is X, in phase 2" — plus personal preferences and lightweight cross-session notes. But memory must never expand into details; the detail lives in `docs/` as the single source of truth.
+
+**On init in existing projects**: If the project already has progress tracking or issue logs in memory, migrate them into the corresponding `docs/` directories, then remove the redundant memory entries. Do not maintain two parallel systems.
 <!-- ch-project-context:end -->
 ```
 
@@ -157,7 +171,6 @@ Skipped (already existed):
 
 Hooks installed:
   - .claude/hooks/session-start.py (SessionStart)
-  - .claude/hooks/quality-gate.py (SubagentStop)
 
 Next Steps:
   1. Edit docs/architecture.md to describe your system
@@ -175,6 +188,6 @@ If this is an existing project with code but no documentation:
 ## Customization Notes
 
 After init, the user can customize:
-- **quality-gate.py**: Change the build command (default: `npx tsc --noEmit`). For non-TypeScript projects, replace with `cargo check`, `go build ./...`, `ruff check`, etc.
-- **session-start.py**: The `DOCS_DIR` path is auto-configured relative to the hook location. No changes needed unless docs/ moves.
+- **session-start.py**: The `DOCS_DIR` path is auto-configured relative to the hook location. No changes needed unless docs/ moves. Returns empty output when all data sources are empty (no noise).
 - **workflow.md**: Optional. Create only if there are team workflow rules to enforce.
+- **Doc vs Skill**: Reference documentation (architecture, decisions, research) belongs in `docs/`. Operational runbooks (local-dev setup, deploy procedures, troubleshooting playbooks) are better implemented as skills — they are triggerable, executable, and carry runtime context. If you find yourself writing a step-by-step guide in `docs/`, consider whether it should be a skill instead.
