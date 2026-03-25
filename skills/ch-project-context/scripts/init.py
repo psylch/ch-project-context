@@ -30,24 +30,19 @@ DIRS = [
 ]
 
 
-# ── Hook: session-start.py ─────────────────────────────────────────
+# ── Shared module: context.py ─────────────────────────────────────
 
-SESSION_START_HOOK = r'''#!/usr/bin/env python3
+CONTEXT_MODULE = r'''#!/usr/bin/env python3
 """
-Session-start hook: injects current project context into agent prompt.
+Shared context builder for ch-project-context hooks.
 
-Reads exec-plans frontmatter, active known-issues, and workflow.md
-to assemble a <session-context> block. Agent receives this automatically
-on every session start, compact, and clear.
+Reads docs/ directory structure and assembles structured context
+with layered XML tags. Used by both session-start and subagent-context hooks.
 """
 
-import json
 import os
 import glob as globmod
 import re
-import sys
-
-DOCS_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'docs')
 
 
 def parse_frontmatter(filepath):
@@ -82,9 +77,9 @@ def parse_frontmatter(filepath):
     return meta, body
 
 
-def get_active_plans():
+def get_active_plans(docs_dir):
     """Read active exec-plans and extract status summary."""
-    plans_dir = os.path.join(DOCS_DIR, 'exec-plans', 'active')
+    plans_dir = os.path.join(docs_dir, 'exec-plans', 'active')
     if not os.path.isdir(plans_dir):
         return []
 
@@ -111,9 +106,9 @@ def get_active_plans():
     return results
 
 
-def get_active_issues():
+def get_active_issues(docs_dir):
     """Read active known-issues from frontmatter."""
-    issues_dir = os.path.join(DOCS_DIR, 'known-issues')
+    issues_dir = os.path.join(docs_dir, 'known-issues')
     if not os.path.isdir(issues_dir):
         return []
 
@@ -130,59 +125,126 @@ def get_active_issues():
     return results
 
 
-def get_workflow():
+def get_workflow(docs_dir):
     """Read workflow.md if it exists."""
-    workflow_path = os.path.join(DOCS_DIR, 'workflow.md')
+    workflow_path = os.path.join(docs_dir, 'workflow.md')
     if os.path.isfile(workflow_path):
         with open(workflow_path, 'r', encoding='utf-8') as f:
             return f.read().strip()
     return None
 
 
-def build_context():
-    """Assemble the session context. Returns empty string if no active data."""
-    plans = get_active_plans()
-    issues = get_active_issues()
-    workflow = get_workflow()
+def build_context(docs_dir):
+    """Assemble project context with layered XML tags. Returns empty string if no data."""
+    plans = get_active_plans(docs_dir)
+    issues = get_active_issues(docs_dir)
+    workflow = get_workflow(docs_dir)
 
     if not plans and not issues and not workflow:
         return ''
 
-    parts = ['<session-context>']
+    parts = []
 
     if plans:
-        parts.append('\n## Active Exec Plans\n')
+        lines = []
         for p in plans:
-            parts.append(f"**{p['title']}** — {p['status']}")
+            lines.append(f"**{p['title']}** — {p['status']}")
             if p['description']:
-                parts.append(f"  {p['description']}")
+                lines.append(f"  {p['description']}")
             if p.get('handoff'):
-                parts.append(f"  Last handoff: {p['handoff'][:200]}...")
-            parts.append('')
+                lines.append(f"  Last handoff: {p['handoff'][:200]}...")
+            lines.append('')
+        parts.append('<active-plans>\n' + '\n'.join(lines) + '</active-plans>')
 
     if issues:
-        parts.append('\n## Active Known Issues\n')
+        lines = []
         for i in issues:
-            parts.append(f"**{i['id']}** ({i['severity']}): {i['title']}")
+            lines.append(f"**{i['id']}** ({i['severity']}): {i['title']}")
             if i['description']:
-                parts.append(f"  {i['description']}")
-            parts.append('')
+                lines.append(f"  {i['description']}")
+            lines.append('')
+        parts.append('<known-issues>\n' + '\n'.join(lines) + '</known-issues>')
 
     if workflow:
-        parts.append('\n## Workflow Rules\n')
-        parts.append(workflow)
-        parts.append('')
+        parts.append(f'<workflow>\n{workflow}\n</workflow>')
 
-    parts.append('</session-context>')
-    return '\n'.join(parts)
+    return '\n\n'.join(parts)
+'''
+
+
+# ── Hook: session-start.py ─────────────────────────────────────────
+
+SESSION_START_HOOK = r'''#!/usr/bin/env python3
+"""
+Session-start hook: injects current project context at session start.
+Uses shared context module for docs/ parsing.
+"""
+
+import json
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(__file__))
+from context import build_context
+
+DOCS_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'docs')
 
 
 def main():
-    context = build_context()
-    result = {
-        "hookSpecificOutput": context
+    context = build_context(DOCS_DIR)
+    print(json.dumps({"hookSpecificOutput": context}))
+
+
+if __name__ == '__main__':
+    main()
+'''
+
+
+# ── Hook: subagent-context.py ─────────────────────────────────────
+
+SUBAGENT_CONTEXT_HOOK = r'''#!/usr/bin/env python3
+"""
+PreToolUse hook: injects project context into subagent prompts.
+
+Intercepts Task/Agent tool calls and appends docs/ context summary
+so subagents are aware of active plans, known issues, and workflow rules.
+Does not modify the original prompt — only adds context via updatedInput.
+"""
+
+import json
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(__file__))
+from context import build_context
+
+DOCS_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'docs')
+
+
+def main():
+    try:
+        hook_input = json.loads(sys.stdin.read())
+    except (json.JSONDecodeError, EOFError):
+        sys.exit(0)
+
+    tool_input = hook_input.get('tool_input', {})
+    original_prompt = tool_input.get('prompt', '')
+
+    context = build_context(DOCS_DIR)
+    if not context:
+        sys.exit(0)
+
+    injection = f"\n\n<project-context>\n{context}\n</project-context>"
+    new_prompt = original_prompt + injection
+
+    output = {
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "allow",
+            "updatedInput": {**tool_input, "prompt": new_prompt},
+        }
     }
-    print(json.dumps(result))
+    print(json.dumps(output, ensure_ascii=False))
 
 
 if __name__ == '__main__':
@@ -205,6 +267,28 @@ SETTINGS_HOOKS = {
                     }
                 ],
             }
+        ],
+        "PreToolUse": [
+            {
+                "matcher": "Task",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "python3 .claude/hooks/subagent-context.py",
+                        "timeout": 10000,
+                    }
+                ],
+            },
+            {
+                "matcher": "Agent",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "python3 .claude/hooks/subagent-context.py",
+                        "timeout": 10000,
+                    }
+                ],
+            },
         ],
     }
 }
@@ -248,17 +332,31 @@ def create_dirs(root):
 
 
 def install_hooks(root):
-    """Write hook scripts to .claude/hooks/."""
+    """Write hook scripts and shared module to .claude/hooks/."""
     hooks_dir = os.path.join(root, '.claude', 'hooks')
     os.makedirs(hooks_dir, exist_ok=True)
 
     installed = []
 
+    # Shared context module
+    context_path = os.path.join(hooks_dir, 'context.py')
+    with open(context_path, 'w', encoding='utf-8') as f:
+        f.write(CONTEXT_MODULE.lstrip('\n'))
+    os.chmod(context_path, 0o755)
+
+    # Session-start hook
     session_path = os.path.join(hooks_dir, 'session-start.py')
     with open(session_path, 'w', encoding='utf-8') as f:
         f.write(SESSION_START_HOOK.lstrip('\n'))
     os.chmod(session_path, 0o755)
     installed.append('session-start.py')
+
+    # Subagent context hook (PreToolUse)
+    subagent_path = os.path.join(hooks_dir, 'subagent-context.py')
+    with open(subagent_path, 'w', encoding='utf-8') as f:
+        f.write(SUBAGENT_CONTEXT_HOOK.lstrip('\n'))
+    os.chmod(subagent_path, 0o755)
+    installed.append('subagent-context.py')
 
     return installed
 

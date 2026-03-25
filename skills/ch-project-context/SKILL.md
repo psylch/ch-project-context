@@ -1,6 +1,6 @@
 ---
 name: ch-project-context
-description: "Initialize a project-level context management system with docs/ directory structure, Claude Code session-start hook for automatic context injection, and CLAUDE.md navigation. Use when starting a new project, bootstrapping context management, or when the user says '/ch-project-context init', 'init project context', 'setup context management', 'initialize docs structure'."
+description: "Initialize a project-level context management system with docs/ directory structure, Claude Code hooks for automatic context injection (session-start + subagent PreToolUse), and CLAUDE.md navigation. Use when starting a new project, bootstrapping context management, or when the user says '/ch-project-context init', 'init project context', 'setup context management', 'initialize docs structure'."
 ---
 
 # ch-project-context
@@ -9,7 +9,7 @@ One-command initialization of a project-level context management system for Clau
 
 ## What It Does
 
-Creates a structured `docs/` directory, installs a Claude Code session-start hook for automatic context injection, and wires everything into `.claude/settings.json` and `CLAUDE.md`.
+Creates a structured `docs/` directory, installs Claude Code hooks for automatic context injection (session-start + subagent enrichment), and wires everything into `.claude/settings.json` and `CLAUDE.md`.
 
 ## When to Use
 
@@ -73,7 +73,7 @@ The script outputs JSON:
   "status": "ok",
   "created": ["docs/exec-plans/active/", "docs/decisions/", ...],
   "skipped": ["docs/research/"],
-  "hooks_installed": ["session-start.py"],
+  "hooks_installed": ["session-start.py", "subagent-context.py"],
   "settings_updated": true
 }
 ```
@@ -105,6 +105,7 @@ The navigation block to append (between markers):
 ### Context Automation
 
 - **Session-start hook**: Auto-injects active plans, known issues, and workflow rules at session start (no output when all sources are empty)
+- **Subagent-context hook** (PreToolUse): Enriches subagent prompts with the same project context, so spawned agents know about active plans and issues without relying on the dispatcher
 - **Frontmatter convention**: Every doc file uses YAML frontmatter (title, description, status, related) for hook parsing
 
 ### Document Lifecycle
@@ -170,7 +171,9 @@ Skipped (already existed):
   <list if any>
 
 Hooks installed:
+  - .claude/hooks/context.py (shared context builder)
   - .claude/hooks/session-start.py (SessionStart)
+  - .claude/hooks/subagent-context.py (PreToolUse → Task/Agent)
 
 Next Steps:
   1. Edit docs/architecture.md to describe your system
@@ -188,6 +191,6 @@ If this is an existing project with code but no documentation:
 ## Customization Notes
 
 After init, the user can customize:
-- **session-start.py**: The `DOCS_DIR` path is auto-configured relative to the hook location. No changes needed unless docs/ moves. Returns empty output when all data sources are empty (no noise).
+- **session-start.py / subagent-context.py**: The `DOCS_DIR` path is auto-configured relative to the hook location. No changes needed unless docs/ moves. Both return empty output when all data sources are empty (no noise). Shared logic lives in `context.py`.
 - **workflow.md**: Optional. Create only if there are team workflow rules to enforce.
 - **Doc vs Skill**: Reference documentation (architecture, decisions, research) belongs in `docs/`. Operational runbooks (local-dev setup, deploy procedures, troubleshooting playbooks) are better implemented as skills — they are triggerable, executable, and carry runtime context. If you find yourself writing a step-by-step guide in `docs/`, consider whether it should be a skill instead.
