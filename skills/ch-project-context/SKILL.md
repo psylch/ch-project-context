@@ -128,6 +128,25 @@ This project uses a structured `docs/` system instead of Claude Code's memory fo
 **Memory as companion**: Memory is useful as a **hot cache and pointer layer** for docs — e.g., "current highest-priority plan is X, in phase 2" — plus personal preferences and lightweight cross-session notes. But memory must never expand into details; the detail lives in `docs/` as the single source of truth.
 
 **On init in existing projects**: If the project already has progress tracking or issue logs in memory, migrate them into the corresponding `docs/` directories, then remove the redundant memory entries. Do not maintain two parallel systems.
+
+### Writing New Content
+
+**Doc vs Skill**: `docs/` is for reference knowledge (architecture, decisions, research, known issues). Operational runbooks (local-dev setup, deploy procedures, troubleshooting playbooks) should be skills — they are triggerable, executable, and carry runtime context. If you're writing a step-by-step guide, it's probably a skill, not a doc.
+
+**workflow.md**: Optional team workflow rules file in `docs/`. Create it when there are conventions that all agents must follow (branching strategy, review process, naming conventions). The session-start hook auto-injects its content. If no team-specific rules exist, don't create it.
+
+**Adding docs**: Every file in `docs/` uses YAML frontmatter:
+
+```yaml
+---
+title: Short descriptive title
+description: One-line summary (what + why)
+status: active | completed | draft | superseded-by <ID>
+date: YYYY-MM-DD
+---
+```
+
+Naming: decisions use `D001-short-name.md`, issues use `I001-short-name.md`, research uses descriptive names, exec-plans use `docs/exec-plans/active/<feature>/plan.md`.
 <!-- ch-project-context:end -->
 ```
 
