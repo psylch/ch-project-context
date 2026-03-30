@@ -25,6 +25,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(SCRIPT_DIR, '..', 'templates')
 
 DIRS = [
+    "docs/exec-plans/pending",
     "docs/exec-plans/active",
     "docs/exec-plans/completed",
     "docs/decisions",

@@ -135,7 +135,7 @@ Two paths for agents to find information:
 
 ## Lifecycle Rules
 
-- **Exec plans**: `active/` while in progress, move to `completed/` when done
+- **Exec plans**: `pending/` when planned but not started → `active/` while in progress → `completed/` when done
 - **Known issues**: Top-level while active, move to `resolved/` when fixed
 - **Decisions**: Stay in `decisions/` permanently. If superseded, update `status: superseded-by <new-ID>`
 - **Research**: Stays in `research/` permanently

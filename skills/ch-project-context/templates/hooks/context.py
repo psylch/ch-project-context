@@ -72,6 +72,27 @@ def get_active_plans(docs_dir):
     return results
 
 
+def get_pending_plans(docs_dir):
+    """Read pending exec-plans (planned but not yet started)."""
+    plans_dir = os.path.join(docs_dir, 'exec-plans', 'pending')
+    if not os.path.isdir(plans_dir):
+        return []
+
+    results = []
+    for filepath in sorted(globmod.glob(os.path.join(plans_dir, '**', '*.md'), recursive=True)):
+        meta, _ = parse_frontmatter(filepath)
+        if meta:
+            name = os.path.basename(os.path.dirname(filepath))
+            if name == 'pending':
+                name = os.path.splitext(os.path.basename(filepath))[0]
+            results.append({
+                'name': name,
+                'title': meta.get('title', name),
+                'description': meta.get('description', ''),
+            })
+    return results
+
+
 def get_active_issues(docs_dir):
     """Read active known-issues from frontmatter."""
     issues_dir = os.path.join(docs_dir, 'known-issues')
@@ -102,14 +123,24 @@ def get_workflow(docs_dir):
 
 def build_context(docs_dir):
     """Assemble project context with layered XML tags. Returns empty string if no data."""
+    pending = get_pending_plans(docs_dir)
     plans = get_active_plans(docs_dir)
     issues = get_active_issues(docs_dir)
     workflow = get_workflow(docs_dir)
 
-    if not plans and not issues and not workflow:
+    if not pending and not plans and not issues and not workflow:
         return ''
 
     parts = []
+
+    if pending:
+        lines = []
+        for p in pending:
+            lines.append(f"**{p['title']}**")
+            if p['description']:
+                lines.append(f"  {p['description']}")
+            lines.append('')
+        parts.append('<pending-plans>\n' + '\n'.join(lines) + '</pending-plans>')
 
     if plans:
         lines = []
