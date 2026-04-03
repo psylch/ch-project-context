@@ -16,7 +16,12 @@ DOCS_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'docs')
 
 def main():
     context = build_context(DOCS_DIR)
-    print(json.dumps({"hookSpecificOutput": context}))
+    print(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "SessionStart",
+            "additionalContext": context,
+        }
+    }, ensure_ascii=False))
 
 
 if __name__ == '__main__':
