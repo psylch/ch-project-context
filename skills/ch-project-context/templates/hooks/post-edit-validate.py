@@ -40,23 +40,23 @@ def validate_exec_plans():
                 continue
 
             # Required fields
-            for field in ('title', 'description', 'status', 'date'):
-                if field not in meta:
-                    findings.append(f'{rel}: missing required field "{field}"')
+            missing = [f for f in ('title', 'description', 'status', 'date') if f not in meta]
+            if missing:
+                findings.append(f'{rel} — add {", ".join(missing)} to frontmatter')
 
             status = meta.get('status', '')
 
             # Completed plans must have summary
             if subdir == 'completed' and 'summary' not in meta:
-                findings.append(f'{rel}: completed plan missing "summary" field')
+                findings.append(f'{rel} — add summary to frontmatter')
 
             # Status/directory mismatch
             if subdir == 'active' and status == 'completed':
-                findings.append(f'{rel}: status is "completed" but file is still in active/ — move to completed/')
+                findings.append(f'{rel} — move to completed/')
             if subdir == 'completed' and status in ('in-progress', 'pending'):
-                findings.append(f'{rel}: status is "{status}" but file is in completed/')
+                findings.append(f'{rel} — update status to completed')
             if subdir == 'pending' and status == 'in-progress':
-                findings.append(f'{rel}: status is "in-progress" but file is in pending/ — move to active/')
+                findings.append(f'{rel} — move to active/')
 
     return findings
 
@@ -77,10 +77,9 @@ def main():
     if not findings:
         return
 
-    audit_text = '<context-audit>\n'
+    audit_text = 'Fix exec-plan issues:\n'
     for f in findings:
-        audit_text += f'  x {f}\n'
-    audit_text += '</context-audit>'
+        audit_text += f'• {f}\n'
 
     print(json.dumps({
         "hookSpecificOutput": {
