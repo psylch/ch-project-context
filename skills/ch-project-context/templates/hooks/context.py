@@ -93,6 +93,39 @@ def get_pending_plans(docs_dir):
     return results
 
 
+def get_recent_completed_plans(docs_dir, max_count=3):
+    """Read recently completed exec-plans, sorted by mtime desc, up to max_count."""
+    plans_dir = os.path.join(docs_dir, 'exec-plans', 'completed')
+    if not os.path.isdir(plans_dir):
+        return []
+
+    # Collect all completed plan files with mtime
+    candidates = []
+    for filepath in globmod.glob(os.path.join(plans_dir, '**', '*.md'), recursive=True):
+        meta, _ = parse_frontmatter(filepath)
+        if meta:
+            candidates.append((filepath, meta, os.path.getmtime(filepath)))
+
+    # Sort by mtime descending, take top N
+    candidates.sort(key=lambda x: x[2], reverse=True)
+    candidates = candidates[:max_count]
+
+    from datetime import datetime
+    results = []
+    for filepath, meta, mtime in candidates:
+        name = os.path.basename(os.path.dirname(filepath))
+        if name == 'completed':
+            name = os.path.splitext(os.path.basename(filepath))[0]
+        completed_date = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d')
+        results.append({
+            'name': name,
+            'title': meta.get('title', name),
+            'summary': meta.get('summary', meta.get('description', '')),
+            'completed_date': completed_date,
+        })
+    return results
+
+
 def get_active_issues(docs_dir):
     """Read active known-issues from frontmatter."""
     issues_dir = os.path.join(docs_dir, 'known-issues')
@@ -125,10 +158,11 @@ def build_context(docs_dir):
     """Assemble project context with layered XML tags. Returns empty string if no data."""
     pending = get_pending_plans(docs_dir)
     plans = get_active_plans(docs_dir)
+    completed = get_recent_completed_plans(docs_dir)
     issues = get_active_issues(docs_dir)
     workflow = get_workflow(docs_dir)
 
-    if not pending and not plans and not issues and not workflow:
+    if not pending and not plans and not completed and not issues and not workflow:
         return ''
 
     parts = []
@@ -152,6 +186,15 @@ def build_context(docs_dir):
                 lines.append(f"  Last handoff: {p['handoff'][:200]}...")
             lines.append('')
         parts.append('<active-plans>\n' + '\n'.join(lines) + '</active-plans>')
+
+    if completed:
+        lines = []
+        for p in completed:
+            lines.append(f"**{p['title']}** — completed {p['completed_date']}")
+            if p['summary']:
+                lines.append(f"  {p['summary']}")
+            lines.append('')
+        parts.append('<recent-completed-plans>\n' + '\n'.join(lines) + '</recent-completed-plans>')
 
     if issues:
         lines = []

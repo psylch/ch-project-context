@@ -15,6 +15,14 @@ date: YYYY-MM-DD
 ---
 ```
 
+### Completion Fields
+
+```yaml
+summary: <outcome summary>      # Required when status changes to completed
+                                # What was accomplished, key decisions, residual issues
+                                # Used by session-start hook to brief new sessions
+```
+
 ### Optional Fields
 
 ```yaml
@@ -135,7 +143,7 @@ Two paths for agents to find information:
 
 ## Lifecycle Rules
 
-- **Exec plans**: `pending/` when planned but not started → `active/` while in progress → `completed/` when done
+- **Exec plans**: `pending/` when planned but not started → `active/` while in progress → `completed/` when done. **Must add `summary` field when moving to completed.**
 - **Known issues**: Top-level while active, move to `resolved/` when fixed
 - **Decisions**: Stay in `decisions/` permanently. If superseded, update `status: superseded-by <new-ID>`
 - **Research**: Stays in `research/` permanently
