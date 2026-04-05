@@ -34,13 +34,13 @@
         ]
       }
     ],
-    "Stop": [
+    "PostToolUse": [
       {
-        "matcher": "",
+        "matcher": "Write|Edit",
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'cd \"$(git rev-parse --show-superproject-working-tree 2>/dev/null || git rev-parse --show-toplevel)\" && python3 .claude/hooks/stop-validate.py'",
+            "command": "bash -c 'cd \"$(git rev-parse --show-superproject-working-tree 2>/dev/null || git rev-parse --show-toplevel)\" && python3 .claude/hooks/post-edit-validate.py'",
             "timeout": 5000
           }
         ]

@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
 """
-Stop hook: validates docs/ conventions after each agent turn.
+PostToolUse hook: validates exec-plan conventions after Write/Edit on docs/exec-plans/.
 Only emits output when issues are found — silent otherwise.
 """
 
 import json
 import os
 import sys
-import re
 import glob as globmod
 
 sys.path.insert(0, os.path.dirname(__file__))
 from context import parse_frontmatter
 
 DOCS_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'docs')
+
+
+def is_exec_plan_edit(tool_input):
+    """Check if the edited file is under docs/exec-plans/."""
+    file_path = tool_input.get('file_path', '')
+    return 'exec-plans' in file_path
 
 
 def validate_exec_plans():
@@ -57,6 +62,17 @@ def validate_exec_plans():
 
 
 def main():
+    # Read hook input from stdin
+    try:
+        hook_input = json.loads(sys.stdin.read())
+    except (json.JSONDecodeError, IOError):
+        return
+
+    # Only run if the edit touched exec-plans
+    tool_input = hook_input.get('tool_input', {})
+    if not is_exec_plan_edit(tool_input):
+        return
+
     findings = validate_exec_plans()
     if not findings:
         return
@@ -68,7 +84,7 @@ def main():
 
     print(json.dumps({
         "hookSpecificOutput": {
-            "hookEventName": "Stop",
+            "hookEventName": "PostToolUse",
             "additionalContext": audit_text,
         }
     }, ensure_ascii=False))
