@@ -2,59 +2,51 @@
 
 [English](README.md)
 
-一个 [skills.sh](https://skills.sh/) 技能，用于 Claude Code，一条命令即可为项目搭建上下文管理系统。
+一个通过 [skills.sh](https://skills.sh/) 分发的项目上下文管理技能，支持 Claude Code、Codex 或同时支持两者。
 
 ## 功能
 
-在 Claude Code 会话中运行 `/ch-project-context init` 将会：
+运行 `/ch-project-context init` 后：
 
-1. 创建结构化的 `docs/` 目录（`exec-plans/`、`decisions/`、`research/`、`known-issues/`、`archive/`）
-2. 安装两个 Claude Code hooks：
-   - **session-start** -- 每次新会话自动注入活跃计划、已知问题和工作流规则
-   - **quality-gate** -- 阻止子 agent 完成，直到构建通过并有验证证据
-3. 将 hooks 写入 `.claude/settings.json`
-4. 在 `CLAUDE.md` 中追加文档导航块
-5. 可选创建 `docs/architecture.md` 骨架
+1. 创建用于计划、决策、研究、已知问题和归档的结构化 `docs/` 目录。
+2. 安装会话启动、子 agent 上下文和文档校验 hooks。
+3. 按目标写入 `.claude/`、`.codex/` 或两者，并保持配置格式相互独立。
+4. 将文档导航块写入 `CLAUDE.md`、`AGENTS.md` 或两者。
+5. 在文件尚不存在时创建 `docs/architecture.md`。
 
-所有生成的文档使用 YAML frontmatter，便于 hooks 程序化解析。
+Claude Code 使用 `SessionStart` 和 `PreToolUse` 增强子 agent 提示；Codex 使用原生 `SessionStart` 与 `SubagentStart` 注入上下文。
 
 ## 安装
-
-### 通过 skills.sh（推荐）
 
 ```bash
 npx skills add psylch/ch-project-context -g -y
 ```
 
-### 手动安装
+需要 Python 3.6+，脚本没有第三方依赖。
 
-```bash
-git clone https://github.com/psylch/ch-project-context.git ~/.claude/skills/ch-project-context
-```
+Codex 的项目级 hooks 要求所选项目根目录是 Git 仓库；仅初始化 Claude 时仍可用于非 Git 项目目录。
 
-安装后需重启 agent。
+## 使用
 
-## 前置条件
+在 agent 会话中运行：
 
-- 支持 [skills.sh](https://skills.sh/) 的 AI 编程 agent（Claude Code、Cursor、Windsurf 等）
-- **Python 3.6+**（运行技能脚本，零外部依赖）
-
-## 使用方法
-
-在任意 Claude Code 会话中：
-
-```
+```text
 /ch-project-context init
 ```
 
-技能会自动检测项目根目录，检查已有文件（覆盖前会提示确认），运行初始化脚本，并报告创建了哪些内容。
+技能会询问目标环境（`claude`、`codex` 或 `both`）和文档语言，检查已有文件，完成初始化并验证生成的 hooks。
 
-## 自定义
+也可以直接运行底层脚本：
 
-初始化后可以自定义：
+```bash
+python3 skills/ch-project-context/scripts/init.py \
+  --root /path/to/project \
+  --target codex
+```
 
-- **`.claude/hooks/quality-gate.py`** -- 将 `BUILD_CMD` 从 `['npx', 'tsc', '--noEmit']` 改为你项目的构建检查命令（如 `['cargo', 'check']`、`['ruff', 'check', '.']`）
-- **`docs/workflow.md`** -- 创建此文件，自动将团队工作流规则注入每次会话
+为保持向后兼容，直接运行脚本时默认使用 `--target claude`。
+
+Codex 的项目级 hooks 在运行前需要通过 `/hooks` 检查并信任。
 
 ## 许可证
 

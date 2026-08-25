@@ -1,183 +1,143 @@
 ---
 name: ch-project-context
-description: "Initialize a project-level context management system with docs/ directory structure, Claude Code hooks for automatic context injection (session-start + subagent PreToolUse), and CLAUDE.md navigation. Use when starting a new project, bootstrapping context management, or when the user says '/ch-project-context init', 'init project context', 'setup context management', 'initialize docs structure'."
+description: "Initialize a project-level context management system with a structured docs/ directory, automatic session and subagent context injection, docs validation, and project instruction navigation. Supports Claude Code, Codex, or both. Use when starting a long-lived project, bootstrapping context management, or when the user says '/ch-project-context init', 'init project context', 'setup context management', or 'initialize docs structure'."
 ---
 
 # ch-project-context
 
-One-command initialization of a project-level context management system for Claude Code agents.
+Initialize durable project context for Claude Code, Codex, or both without mixing their configuration formats.
 
-## What It Does
+## Step 0: Assess Project Fit
 
-Creates a structured `docs/` directory, installs Claude Code hooks for automatic context injection (session-start + subagent enrichment), and wires everything into `.claude/settings.json` and `CLAUDE.md`.
+Determine whether the project needs the full mechanism:
 
-## When to Use
+| Signal | Full mechanism is useful when… |
+|--------|-------------------------------|
+| Multi-agent handoff | Multiple agents or people take turns working on it |
+| Cross-session continuity | Work spans enough sessions for state to drift |
+| Long-lived work items | Decisions, plans, and issues accumulate over days |
 
-- Starting a new project that will use Claude Code agents
-- Bootstrapping context management in an existing project that lacks it
-- User says `/ch-project-context init` or similar
+If all three signals are absent, recommend a lightweight project instruction file (`CLAUDE.md`, `AGENTS.md`, or both) and stop. Do not create `docs/` or hooks.
 
-## Instructions
+## Step 1: Resolve the Project Root
 
-### Step 0: Assess Project Type
+Use the current working directory. Verify that it looks like a project root, such as containing `.git/`, `package.json`, `Cargo.toml`, or `pyproject.toml`. If evidence points to a parent directory, resolve it before writing.
 
-Before doing anything, determine whether this project actually needs the full context management system. Ask these three questions:
+For `codex` or `both`, require the selected root to be a Git repository root (`.git` may be a directory or worktree file). Codex discovers repo-local `.codex/hooks.json` through its trusted project configuration layer; a standalone non-Git directory is not sufficient. If Git is absent, ask the user whether to initialize it or choose `claude`. Do not run `git init` without the user's approval.
 
-| Signal | Yes → Full mechanism | No → Lightweight |
-|--------|---------------------|-------------------|
-| **Multi-agent handoff** — Will multiple agents or people take turns working on this? | Exec-plans track phases and handoff notes | No handoff = no state to pass |
-| **Cross-session state continuity** — Does work span many sessions where context could drift? | Session-start hook auto-injects "where we left off" | Single-session work = no drift risk |
-| **Work item lifecycle > few days** — Do individual tasks live long enough to accumulate decisions and issues? | Decisions/known-issues directories earn their keep | Short tasks = overhead > value |
+## Step 2: Select Target and Language
 
-**If all three are "No"**: This is an **atomic work collection** (e.g., a workspace of independent small projects, a skill collection, a monorepo of micro-tools). The full mechanism is over-engineering. Instead, recommend:
+Select one target:
 
-```
-[ch-project-context] This project doesn't need the full context system.
+- `claude`: generate `CLAUDE.md`, `.claude/hooks/`, and merge `.claude/settings.json`.
+- `codex`: generate `AGENTS.md`, `.codex/hooks/`, and merge `.codex/hooks.json`.
+- `both`: generate both instruction files and keep each platform's hook configuration separate.
 
-For atomic work collections, these are sufficient:
-  1. A well-written CLAUDE.md with project structure and workflow conventions
-  2. Batch operation SOPs (review/fix/verify flows) documented in CLAUDE.md
-  3. Claude Code's memory system for cross-session context
+If the user did not specify a target and the active environment does not make it unambiguous, ask which target they want. The init script defaults to `claude` only for backward-compatible direct CLI use.
 
-No docs/ directory, no hooks, no frontmatter needed.
-```
+Ask which language to use for documentation body text. Default to English if the user has no preference. Keep frontmatter keys, directory names, and code in English.
 
-Then **stop** — do not proceed to Step 1.
+## Step 3: Inspect Existing State
 
-**If one or more are "Yes"**: Proceed with the full init below.
+Before running init:
 
-### Step 1: Detect Project Root
+- If `docs/` contains files, explain that init skips the architecture template but hook templates are refreshed.
+- For `claude`, inspect `.claude/hooks/` and `.claude/settings.json`.
+- For `codex`, inspect `.codex/hooks/` and `.codex/hooks.json`.
+- For `both`, inspect both platform directories.
+- Preserve unrelated hook entries and settings. If an existing generated hook was customized, show the overlap and ask before replacing it.
 
-Resolve the project root directory. Use the current working directory. Verify it looks like a project root (has `.git/`, `package.json`, `Cargo.toml`, `pyproject.toml`, or similar). If unsure, confirm with the user.
+## Step 4: Run Init
 
-### Step 2: Ask Language Preference
-
-Ask the user what language the documentation content should be written in. This affects doc body text only (decisions, issues, plans, research). Frontmatter keys, directory names, and code stay in English.
-
-Examples: "English", "中文", "日本語", "한국어", etc. Default to English if the user doesn't care.
-
-Store the answer for Step 4 (template substitution).
-
-### Step 3: Check Existing State
-
-Before running init, check what already exists:
-- If `docs/` exists with content, warn the user and ask whether to merge (skip existing dirs) or abort
-- If `.claude/hooks/` already has hook files, warn and ask whether to overwrite or skip
-- If `.claude/settings.json` exists, merge hook entries rather than overwriting
-
-### Step 4: Run Init Script
-
-Run the init script to create the directory structure and hook files:
+Run:
 
 ```bash
-python3 {SKILL_DIR}/scripts/init.py --root <project-root>
+python3 {SKILL_DIR}/scripts/init.py \
+  --root <project-root> \
+  --target <claude|codex|both>
 ```
 
-Where `{SKILL_DIR}` is the directory containing this SKILL.md. Resolve at runtime.
+The script has no external dependencies. It creates the docs structure, installs only the hooks needed by the selected target, and merges hook entries without replacing unrelated configuration.
 
-The script outputs JSON:
+Expected output:
+
 ```json
 {
   "status": "ok",
-  "created": ["docs/exec-plans/active/", "docs/decisions/", ...],
-  "skipped": ["docs/research/"],
-  "hooks_installed": ["session-start.py", "subagent-context.py"],
-  "settings_updated": true
+  "root": "/path/to/project",
+  "target": "both",
+  "created": ["docs/exec-plans/active", ".claude/hooks", ".codex/hooks"],
+  "skipped": [],
+  "hooks_installed": {
+    "claude": ["session-start.py", "subagent-context.py", "post-edit-validate.py"],
+    "codex": ["session-start.py", "subagent-start.py", "post-edit-validate.py"]
+  },
+  "configs_updated": {"claude": true, "codex": true}
 }
 ```
 
-### Step 5: Update CLAUDE.md
+## Step 5: Update Project Instructions
 
-After the script succeeds, update CLAUDE.md:
+Read `{SKILL_DIR}/templates/instructions-block.md`, replace `{lang}`, and append it to each selected instruction file:
 
-**If CLAUDE.md exists**: Append the docs navigation block at the end (read the file first to avoid duplicating if the block already exists — check for `<!-- ch-project-context:start -->` marker).
+- `claude` → `CLAUDE.md`
+- `codex` → `AGENTS.md`
+- `both` → both files
 
-**If CLAUDE.md does not exist**: Create a minimal CLAUDE.md with project name (inferred from directory name or package.json) and the docs navigation block.
+If the file exists, read it first and preserve its content. Do not append another block when `<!-- ch-project-context:start -->` is already present. If the file does not exist, create a minimal heading with the inferred project name before the block.
 
-Read `{SKILL_DIR}/templates/claude-md-block.md`, replace `{lang}` with the user's language choice from Step 2, then append to CLAUDE.md.
+## Step 6: Verify Platform Behavior
 
-### Step 6: Audit Existing Content
+Verify generated files and run hooks directly before reporting success:
 
-Scan the project for content that should be restructured into the docs/ system. Report findings to the user as a checklist — do not auto-fix, let the user decide.
-
-**Check 1: Memory state leakage** — Read MEMORY.md (if exists). Flag any entries that track progress, plans, issues, or decisions — these belong in `docs/`, not memory. Memory should only have pointers and personal preferences.
-
-**Check 2: Scattered documentation** — Glob for `.md` files outside `docs/` (excluding README.md, CLAUDE.md, CHANGELOG.md, CONTRIBUTING.md, LICENSE). Flag files that look like decision records, known issues, architecture docs, or exec plans.
-
-**Check 3: README inline knowledge** — Read README.md. Flag sections like "Known Issues", "Architecture", "Decisions", "Roadmap" that contain substantive content — this should be extracted to the corresponding `docs/` directory.
-
-**Check 4: Missing frontmatter** — Check any pre-existing files in `docs/`. Flag files that lack the required YAML frontmatter (title, description, status, date).
-
-**Check 5: Operational knowledge as docs** — Look for step-by-step guides, runbooks, or how-to documents in `docs/` or elsewhere. These are better implemented as skills (triggerable, executable, with runtime context). Suggest using a skill creator (e.g. `better-skill-creator`) to convert them.
-
-**Check 6: CLAUDE.md completeness** — Verify CLAUDE.md has appropriate pointers: does it reference `docs/` (the block we just added)? Does it mention installed skills? If the project has skills that aren't referenced in CLAUDE.md, flag them — agents won't know they exist.
-
-Present findings as:
-
-```
-[ch-project-context] Audit Results
-
-✅ No issues (or)
-⚠️ Found items to address:
-
-  Memory:
-    - MEMORY.md has 3 progress-tracking entries → migrate to docs/exec-plans/
-
-  Scattered docs:
-    - ./ARCHITECTURE.md → move to docs/architecture.md
-
-  README sections:
-    - README.md "Known Issues" section → extract to docs/known-issues/
-
-  Missing frontmatter:
-    - docs/decisions/auth-choice.md → add YAML frontmatter
-
-  Docs → Skills:
-    - docs/local-dev-setup.md → convert to skill with better-skill-creator
-
-  CLAUDE.md pointers:
-    - 2 installed skills not referenced in CLAUDE.md
+```bash
+python3 <project-root>/.claude/hooks/session-start.py
+python3 <project-root>/.codex/hooks/session-start.py
+python3 <project-root>/.codex/hooks/subagent-start.py
 ```
 
-If all checks pass, skip the audit output and proceed to Step 7.
+Run only commands for the selected target. Empty output is acceptable when the project has no active plans, issues, or workflow rules.
 
-### Step 7: Report
+For Codex, tell the user to open `/hooks` and review/trust the new project-local hook definitions. Codex deliberately skips untrusted project hooks until they are approved.
 
-Present a summary:
+Platform behavior:
 
-```
-[ch-project-context] Initialized!
+- Claude Code uses `SessionStart` and `PreToolUse` prompt enrichment for `Task`/`Agent`.
+- Codex uses native `SessionStart` and `SubagentStart` context injection.
+- Both use `PostToolUse` to surface exec-plan convention violations after relevant edits.
 
-Project: <name>
-Root: <path>
+## Step 7: Audit Existing Content
 
-Created:
-  <list of created dirs/files>
+Report findings without automatically moving content:
 
-Skipped (already existed):
-  <list if any>
+1. Flag progress, plans, issues, or decisions duplicated in `MEMORY.md`.
+2. Flag architecture, decision, issue, or plan documents scattered outside `docs/`.
+3. Flag substantial "Known Issues", "Architecture", "Decisions", or "Roadmap" sections embedded in `README.md`.
+4. Flag pre-existing files in `docs/` that lack required YAML frontmatter.
+5. Suggest converting operational runbooks into reusable skills.
+6. Verify the selected instruction file or files contain the navigation block and point to installed skills when appropriate.
 
-Hooks installed:
-  - .claude/hooks/context.py (shared context builder)
-  - .claude/hooks/session-start.py (SessionStart)
-  - .claude/hooks/subagent-context.py (PreToolUse → Task/Agent)
+Skip the audit section in the final report when no findings exist.
 
-Next Steps:
-  1. Edit docs/architecture.md to describe your system
-  2. Create your first exec-plan: docs/exec-plans/active/<feature>/plan.md
-  3. Optionally create docs/workflow.md for team workflow rules
-  4. The session-start hook will auto-inject context on every new session
+## Step 8: Report
 
-If this is an existing project with code but no documentation:
-  → Analyze the codebase and populate docs/ automatically.
-    Read the code, infer architecture, key decisions, and known issues,
-    then write docs/architecture.md, docs/decisions/, and docs/known-issues/
-    following the templates in references/conventions.md.
-```
+Report:
 
-## Customization Notes
+- project root and selected target;
+- created and skipped paths;
+- exact hooks installed for each platform;
+- configuration files merged;
+- instruction files updated;
+- verification results;
+- audit findings;
+- for Codex, the required `/hooks` trust-review step.
 
-After init, the user can customize:
-- **session-start.py / subagent-context.py**: The `DOCS_DIR` path is auto-configured relative to the hook location. No changes needed unless docs/ moves. Both return empty output when all data sources are empty (no noise). Shared logic lives in `context.py`.
-- **workflow.md**: Optional. Create only if there are team workflow rules to enforce.
-- **Doc vs Skill**: Reference documentation (architecture, decisions, research) belongs in `docs/`. Operational runbooks (local-dev setup, deploy procedures, troubleshooting playbooks) are better implemented as skills — they are triggerable, executable, and carry runtime context. If you find yourself writing a step-by-step guide in `docs/`, consider whether it should be a skill instead.
+Recommend editing `docs/architecture.md` and creating the first active exec plan when appropriate.
+
+## Implementation Notes
+
+- `context.py` is shared logic copied separately into each selected platform directory.
+- Hook scripts resolve `docs/` relative to their own location.
+- Hooks stay silent when all data sources are empty.
+- `docs/workflow.md` is optional and is injected automatically when present.
+- Reference knowledge belongs in `docs/`; repeatable operational procedures belong in skills.

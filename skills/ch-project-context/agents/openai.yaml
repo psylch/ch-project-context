@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Context"
+  short_description: "Initialize durable context for Claude Code and Codex"
+  default_prompt: "Use $ch-project-context to initialize durable project context for Codex and Claude Code."

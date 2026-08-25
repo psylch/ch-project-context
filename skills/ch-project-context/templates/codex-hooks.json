@@ -1,0 +1,44 @@
+{
+  "description": "Project context injection and docs validation from ch-project-context.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'root=\"$PWD\"; while [ \"$root\" != \"/\" ] && [ ! -f \"$root/.codex/hooks/session-start.py\" ]; do root=\"${root%/*}\"; [ -n \"$root\" ] || root=\"/\"; done; python3 \"$root/.codex/hooks/session-start.py\"'",
+            "timeout": 10,
+            "statusMessage": "Loading project context",
+            "additionalContextLimit": 5000
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'root=\"$PWD\"; while [ \"$root\" != \"/\" ] && [ ! -f \"$root/.codex/hooks/subagent-start.py\" ]; do root=\"${root%/*}\"; [ -n \"$root\" ] || root=\"/\"; done; python3 \"$root/.codex/hooks/subagent-start.py\"'",
+            "timeout": 10,
+            "statusMessage": "Loading project context for subagent",
+            "additionalContextLimit": 5000
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'root=\"$PWD\"; while [ \"$root\" != \"/\" ] && [ ! -f \"$root/.codex/hooks/post-edit-validate.py\" ]; do root=\"${root%/*}\"; [ -n \"$root\" ] || root=\"/\"; done; python3 \"$root/.codex/hooks/post-edit-validate.py\"'",
+            "timeout": 5,
+            "statusMessage": "Validating project docs"
+          }
+        ]
+      }
+    ]
+  }
+}

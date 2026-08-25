@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'cd \"$(git rev-parse --show-superproject-working-tree 2>/dev/null || git rev-parse --show-toplevel)\" && python3 .claude/hooks/session-start.py'",
+            "command": "bash -c 'root=\"$PWD\"; while [ \"$root\" != \"/\" ] && [ ! -f \"$root/.claude/hooks/session-start.py\" ]; do root=\"${root%/*}\"; [ -n \"$root\" ] || root=\"/\"; done; python3 \"$root/.claude/hooks/session-start.py\"'",
             "timeout": 10000
           }
         ]
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'cd \"$(git rev-parse --show-superproject-working-tree 2>/dev/null || git rev-parse --show-toplevel)\" && python3 .claude/hooks/subagent-context.py'",
+            "command": "bash -c 'root=\"$PWD\"; while [ \"$root\" != \"/\" ] && [ ! -f \"$root/.claude/hooks/subagent-context.py\" ]; do root=\"${root%/*}\"; [ -n \"$root\" ] || root=\"/\"; done; python3 \"$root/.claude/hooks/subagent-context.py\"'",
             "timeout": 10000
           }
         ]
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'cd \"$(git rev-parse --show-superproject-working-tree 2>/dev/null || git rev-parse --show-toplevel)\" && python3 .claude/hooks/subagent-context.py'",
+            "command": "bash -c 'root=\"$PWD\"; while [ \"$root\" != \"/\" ] && [ ! -f \"$root/.claude/hooks/subagent-context.py\" ]; do root=\"${root%/*}\"; [ -n \"$root\" ] || root=\"/\"; done; python3 \"$root/.claude/hooks/subagent-context.py\"'",
             "timeout": 10000
           }
         ]
@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'cd \"$(git rev-parse --show-superproject-working-tree 2>/dev/null || git rev-parse --show-toplevel)\" && python3 .claude/hooks/post-edit-validate.py'",
+            "command": "bash -c 'root=\"$PWD\"; while [ \"$root\" != \"/\" ] && [ ! -f \"$root/.claude/hooks/post-edit-validate.py\" ]; do root=\"${root%/*}\"; [ -n \"$root\" ] || root=\"/\"; done; python3 \"$root/.claude/hooks/post-edit-validate.py\"'",
             "timeout": 5000
           }
         ]

@@ -64,7 +64,7 @@ def get_active_plans(docs_dir):
             })
 
             handoff_match = re.search(
-                r'## Phase \d+ .*?\n(.*?)(?=\n## |\Z)',
+                r'## Handoff Notes\s*\n(.*?)(?=\n## |\Z)',
                 body, re.DOTALL
             )
             if handoff_match:
@@ -94,29 +94,31 @@ def get_pending_plans(docs_dir):
 
 
 def get_recent_completed_plans(docs_dir, max_count=3):
-    """Read recently completed exec-plans, sorted by mtime desc, up to max_count."""
+    """Read recently completed exec-plans, sorted by frontmatter date."""
     plans_dir = os.path.join(docs_dir, 'exec-plans', 'completed')
     if not os.path.isdir(plans_dir):
         return []
 
-    # Collect all completed plan files with mtime
+    from datetime import datetime
+
+    # Prefer the durable frontmatter date; use mtime only for legacy files.
     candidates = []
     for filepath in globmod.glob(os.path.join(plans_dir, '**', '*.md'), recursive=True):
         meta, _ = parse_frontmatter(filepath)
         if meta:
-            candidates.append((filepath, meta, os.path.getmtime(filepath)))
+            mtime = os.path.getmtime(filepath)
+            fallback_date = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d')
+            completed_date = meta.get('date') or fallback_date
+            candidates.append((filepath, meta, completed_date, mtime))
 
-    # Sort by mtime descending, take top N
-    candidates.sort(key=lambda x: x[2], reverse=True)
+    candidates.sort(key=lambda x: (x[2], x[3]), reverse=True)
     candidates = candidates[:max_count]
 
-    from datetime import datetime
     results = []
-    for filepath, meta, mtime in candidates:
+    for filepath, meta, completed_date, _ in candidates:
         name = os.path.basename(os.path.dirname(filepath))
         if name == 'completed':
             name = os.path.splitext(os.path.basename(filepath))[0]
-        completed_date = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d')
         results.append({
             'name': name,
             'title': meta.get('title', name),

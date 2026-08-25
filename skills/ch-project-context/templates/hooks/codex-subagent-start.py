@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""
-Session-start hook: injects current project context at session start.
-Uses shared context module for docs/ parsing.
-"""
+"""Codex SubagentStart hook: inject current project context into a subagent."""
 
 import json
 import os
@@ -21,7 +18,7 @@ def main():
 
     print(json.dumps({
         "hookSpecificOutput": {
-            "hookEventName": "SessionStart",
+            "hookEventName": "SubagentStart",
             "additionalContext": context,
         }
     }, ensure_ascii=False))

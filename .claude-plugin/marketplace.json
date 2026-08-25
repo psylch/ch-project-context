@@ -6,8 +6,8 @@
   "plugins": [
     {
       "name": "ch-project-context",
-      "description": "Initialize a project-level context management system with docs/ directory structure, Claude Code hooks (session-start, quality-gate), and CLAUDE.md navigation. Use when starting a new project, bootstrapping context management, or when the user says '/ch-project-context init', 'init project context', 'setup context management', 'initialize docs structure'.",
-      "version": "1.0.0",
+      "description": "Initialize durable project context with structured docs, session and subagent context hooks, and project instruction navigation for Claude Code, Codex, or both.",
+      "version": "1.1.0",
       "source": "./"
     }
   ]

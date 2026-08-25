@@ -17,8 +17,13 @@ DOCS_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'docs')
 
 def is_exec_plan_edit(tool_input):
     """Check if the edited file is under docs/exec-plans/."""
-    file_path = tool_input.get('file_path', '')
-    return 'exec-plans' in file_path
+    if isinstance(tool_input, str):
+        return 'exec-plans' in tool_input
+    if isinstance(tool_input, dict):
+        return any(is_exec_plan_edit(value) for value in tool_input.values())
+    if isinstance(tool_input, (list, tuple)):
+        return any(is_exec_plan_edit(value) for value in tool_input)
+    return False
 
 
 def validate_exec_plans():
